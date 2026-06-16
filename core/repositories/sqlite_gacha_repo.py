@@ -115,17 +115,28 @@ class SqliteGachaRepository(AbstractGachaRepository):
         """后台添加一个新抽卡池"""
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO gacha_pools (name, description, cost_coins, cost_premium_currency, is_limited_time, open_until)
-                VALUES (:name, :description, :cost_coins, :cost_premium_currency, :is_limited_time, :open_until)
-            """, {
+            params = {
+                "gacha_pool_id": data.get("gacha_pool_id", data.get("pool_id")),
                 "name": data.get("name"),
                 "description": data.get("description"),
                 "cost_coins": data.get("cost_coins", 0),
                 "cost_premium_currency": data.get("cost_premium_currency", 0),
                 "is_limited_time": 1 if data.get("is_limited_time") in (True, "1", 1, "on") else 0,
                 "open_until": data.get("open_until")
-            })
+            }
+            if params["gacha_pool_id"] is not None:
+                cursor.execute("""
+                    INSERT INTO gacha_pools (
+                        gacha_pool_id, name, description, cost_coins, cost_premium_currency, is_limited_time, open_until
+                    ) VALUES (
+                        :gacha_pool_id, :name, :description, :cost_coins, :cost_premium_currency, :is_limited_time, :open_until
+                    )
+                """, params)
+            else:
+                cursor.execute("""
+                    INSERT INTO gacha_pools (name, description, cost_coins, cost_premium_currency, is_limited_time, open_until)
+                    VALUES (:name, :description, :cost_coins, :cost_premium_currency, :is_limited_time, :open_until)
+                """, params)
             conn.commit()
 
     def update_pool_template(self, pool_id: int, data: Dict[str, Any]) -> None:
@@ -207,6 +218,22 @@ class SqliteGachaRepository(AbstractGachaRepository):
             return new_pool_id
 
     # Pool Item CRUD
+    def add_pool_item(self, pool_id: int, data: Dict[str, Any]) -> None:
+        """向抽卡池添加一个物品。"""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO gacha_pool_items (gacha_pool_id, item_type, item_id, quantity, weight)
+                VALUES (?, ?, ?, ?, ?)
+            """, (
+                pool_id,
+                data["item_type"],
+                data["item_id"],
+                data.get("quantity", 1),
+                data.get("weight", 10),
+            ))
+            conn.commit()
+
     def add_item_to_pool(self, pool_id: int, data: Dict[str, Any]) -> None:
         """后台向抽卡池添加一个物品"""
         item_full_id = data.get("item_full_id", "").split("-")

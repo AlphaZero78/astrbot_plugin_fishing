@@ -34,7 +34,7 @@ class Bait:
     success_rate_modifier: float = 0.0 # 成功率加成
     rare_chance_modifier: float = 0.0 # 稀有鱼出现几率加成
     garbage_reduction_modifier: float = 0.0 # 垃圾鱼出现几率减少
-    value_modifier: float = 1.0 # 渔获价值加成
+    value_modifier: float = 1.0 # 渔获重量与价值加成
     quantity_modifier: float = 1.0 # 渔获数量加成
     is_consumable: bool = True # 是否消耗品
 
@@ -65,7 +65,7 @@ class Accessory:
     bonus_fish_quality_modifier: float = 1.0
     bonus_fish_quantity_modifier: float = 1.0
     bonus_rare_fish_chance: float = 0.0
-    bonus_coin_modifier: float = 1.0
+    bonus_coin_modifier: float = 1.0 # 渔获重量与价值加成，保留旧字段名以兼容数据库
     other_bonus_description: Optional[str] = None
     icon_url: Optional[str] = None
 

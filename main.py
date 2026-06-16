@@ -90,7 +90,9 @@ class FishingPlugin(Star):
         self.tmp_dir = os.path.join(self.data_dir, "tmp")
         os.makedirs(self.tmp_dir, exist_ok=True)
 
-        db_path = os.path.join(self.data_dir, "fish.db")
+        storage_config = config.get("storage", {})
+        shared_db_path = storage_config.get("shared_db_path", "") if isinstance(storage_config, dict) else ""
+        db_path = shared_db_path.strip() if isinstance(shared_db_path, str) and shared_db_path.strip() else os.path.join(self.data_dir, "fish.db")
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
         
         # --- 1.2. 配置数据完整性检查注释 ---
@@ -331,14 +333,80 @@ class FishingPlugin(Star):
         # --- Web后台配置 ---
         self.web_admin_task = None
         webui_config = config.get("webui", {})
+        self.webui_enabled = webui_config.get("enabled", True)
         self.secret_key = webui_config.get("secret_key")
         if not self.secret_key:
             logger.error("安全警告：Web后台管理的'secret_key'未在配置中设置！强烈建议您设置一个长且随机的字符串以保证安全。")
             self.secret_key = None
         self.port = webui_config.get("port", 7777)
+        if self.webui_enabled:
+            asyncio.create_task(self._auto_start_web_admin_server())
 
         # 管理员扮演功能
         self.impersonation_map = {}
+
+    async def _start_web_admin_server(self):
+        """Start the Web admin server if it is not already running."""
+        if self.web_admin_task and not self.web_admin_task.done():
+            return {
+                "success": False,
+                "message": "钓鱼后台管理已经在运行中",
+            }
+
+        if await self._check_port_active():
+            return {
+                "success": False,
+                "message": f"端口 {self.port} 已被占用，请更换端口后重试",
+            }
+
+        try:
+            from hypercorn.config import Config
+            from hypercorn.asyncio import serve
+            from .manager.server import create_app
+
+            services_to_inject = {
+                "item_template_service": self.item_template_service,
+                "user_service": self.user_service,
+                "market_service": self.market_service,
+                "fishing_zone_service": self.fishing_zone_service,
+                "shop_service": self.shop_service,
+                "exchange_service": self.exchange_service,
+            }
+            app = create_app(secret_key=self.secret_key, services=services_to_inject)
+            server_config = Config()
+            server_config.bind = [f"0.0.0.0:{self.port}"]
+            self.web_admin_task = asyncio.create_task(serve(app, server_config))
+
+            for _ in range(10):
+                if await self._check_port_active():
+                    return {
+                        "success": True,
+                        "message": (
+                            f"钓鱼后台已启动！\n"
+                            f"🔗 请访问 http://localhost:{self.port}/admin\n"
+                            f"🔑 密钥请到配置文件中查看"
+                        ),
+                    }
+                await asyncio.sleep(1)
+
+            self.web_admin_task.cancel()
+            return {
+                "success": False,
+                "message": "启动超时，请检查防火墙设置",
+            }
+        except Exception as e:
+            logger.error(f"启动后台失败: {e}", exc_info=True)
+            return {
+                "success": False,
+                "message": f"启动后台失败: {e}",
+            }
+
+    async def _auto_start_web_admin_server(self):
+        result = await self._start_web_admin_server()
+        if result.get("success"):
+            logger.info(result.get("message"))
+        else:
+            logger.error(f"Web后台自动启动失败: {result.get('message')}")
 
     async def _send_sicbo_announcement(self, session_info: dict, result_data: dict):
         """发送骰宝游戏结果公告 - 使用主动发送机制"""
@@ -602,6 +670,12 @@ class FishingPlugin(Star):
     async def bait(self, event: AstrMessageEvent):
         """查看你拥有的所有鱼饵"""
         async for r in inventory_handlers.bait(self, event):
+            yield r
+
+    @filter.command("出售鱼饵")
+    async def sell_bait(self, event: AstrMessageEvent):
+        """出售指定数量的鱼饵。用法：出售鱼饵 编号 数量"""
+        async for r in inventory_handlers.sell_bait(self, event):
             yield r
 
     @filter.command("道具", alias={"我的道具", "查看道具"})

@@ -617,7 +617,7 @@ async def _draw_backpack_image_impl(user_data: Dict[str, Any], data_dir: str) ->
                 draw.text((x + 15, bonus_y), bonus_text, font=tiny_font, fill=primary_light)
                 bonus_y += 18
             if accessory.get('bonus_coin_modifier', 1.0) != 1.0 and accessory.get('bonus_coin_modifier', 1) != 1 and accessory.get('bonus_coin_modifier', 1) > 0:
-                bonus_text = f"金币加成: {to_percentage(accessory['bonus_coin_modifier'])}"
+                bonus_text = f"重量/价值加成: {to_percentage(accessory['bonus_coin_modifier'])}"
                 draw.text((x + 15, bonus_y), bonus_text, font=tiny_font, fill=gold_color)
                 bonus_y += 18
             

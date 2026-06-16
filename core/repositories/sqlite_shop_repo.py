@@ -113,24 +113,28 @@ class SqliteShopRepository(AbstractShopRepository):
         """创建新商店"""
         conn = self._get_connection()
         cursor = conn.cursor()
+        columns = [
+            "name", "description", "shop_type", "is_active",
+            "start_time", "end_time", "daily_start_time", "daily_end_time", "sort_order",
+        ]
+        values = [
+            data["name"],
+            data.get("description"),
+            data.get("shop_type", "normal"),
+            1 if data.get("is_active", True) else 0,
+            data.get("start_time"),
+            data.get("end_time"),
+            data.get("daily_start_time"),
+            data.get("daily_end_time"),
+            data.get("sort_order", 100),
+        ]
+        if data.get("shop_id") is not None:
+            columns.insert(0, "shop_id")
+            values.insert(0, data["shop_id"])
+        placeholders = ", ".join("?" for _ in columns)
         cursor.execute(
-            """
-            INSERT INTO shops (
-                name, description, shop_type, is_active, 
-                start_time, end_time, daily_start_time, daily_end_time, sort_order
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                data["name"],
-                data.get("description"),
-                data.get("shop_type", "normal"),
-                1 if data.get("is_active", True) else 0,
-                data.get("start_time"),
-                data.get("end_time"),
-                data.get("daily_start_time"),
-                data.get("daily_end_time"),
-                data.get("sort_order", 100),
-            ),
+            f"INSERT INTO shops ({', '.join(columns)}) VALUES ({placeholders})",
+            values,
         )
         conn.commit()
         return self.get_shop_by_id(cursor.lastrowid)  # type: ignore
@@ -198,28 +202,32 @@ class SqliteShopRepository(AbstractShopRepository):
         """创建商店商品"""
         conn = self._get_connection()
         cursor = conn.cursor()
+        columns = [
+            "shop_id", "name", "description", "category",
+            "stock_total", "stock_sold", "per_user_limit", "per_user_daily_limit",
+            "is_active", "start_time", "end_time", "sort_order",
+        ]
+        values = [
+            shop_id,
+            item_data["name"],
+            item_data.get("description"),
+            item_data.get("category", "general"),
+            item_data.get("stock_total"),
+            item_data.get("stock_sold", 0),
+            item_data.get("per_user_limit"),
+            item_data.get("per_user_daily_limit"),
+            1 if item_data.get("is_active", True) else 0,
+            item_data.get("start_time"),
+            item_data.get("end_time"),
+            item_data.get("sort_order", 100),
+        ]
+        if item_data.get("item_id") is not None:
+            columns.insert(0, "item_id")
+            values.insert(0, item_data["item_id"])
+        placeholders = ", ".join("?" for _ in columns)
         cursor.execute(
-            """
-            INSERT INTO shop_items (
-                shop_id, name, description, category,
-                stock_total, stock_sold, per_user_limit, per_user_daily_limit,
-                is_active, start_time, end_time, sort_order
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                shop_id,
-                item_data["name"],
-                item_data.get("description"),
-                item_data.get("category", "general"),
-                item_data.get("stock_total"),
-                item_data.get("stock_sold", 0),
-                item_data.get("per_user_limit"),
-                item_data.get("per_user_daily_limit"),
-                1 if item_data.get("is_active", True) else 0,
-                item_data.get("start_time"),
-                item_data.get("end_time"),
-                item_data.get("sort_order", 100),
-            ),
+            f"INSERT INTO shop_items ({', '.join(columns)}) VALUES ({placeholders})",
+            values,
         )
         conn.commit()
         return self.get_shop_item_by_id(cursor.lastrowid)  # type: ignore

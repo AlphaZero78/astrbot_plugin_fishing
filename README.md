@@ -9,6 +9,14 @@
 
 ## 🚀 最新更新 🚀
 
+### v2.4.8 本地定制更新
+
+- 修复鱼饵 `value_modifier` 实际没有提高渔获价值的问题：现在它会在生成渔获后统一修正重量和基础价值。
+- 修复 `巨物诱饵` 被错误配置为数量加成的问题：现在改为重量/价值 +20%，不会再错误地提高额外渔获数量。
+- 新增统一的“重量/价值乘数”机制：默认值为 1.0，鱼饵和饰品的价值类加成都走同一套最终渔获修正。
+- 更新 WebUI 与背包显示文案，避免“价值/金币加成”与实际效果不一致。
+- 保留旧数据库字段名，两个不同版本实例仍可继续共享同一个数据库。
+
 <div style="background: linear-gradient(135deg, #0ea5e9 0%,#86a4f8 100%); padding: 20px; border-radius: 15px; margin: 20px 0; box-shadow: 0 8px 32px hsla(199, 94.70%, 62.70%, 0.89);">
 
 ### 🎲 **v2.4.0 骰宝游戏全面重构**
@@ -32,7 +40,7 @@
 [![AGPL-3.0 License](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://opensource.org/licenses/AGPL-3.0)
 [![Python](https://img.shields.io/badge/Python-3.8+-green.svg)](https://python.org)
 [![AstrBot](https://img.shields.io/badge/AstrBot-Plugin-orange.svg)](https://github.com/astrbot/astrbot)
-[![Version](https://img.shields.io/badge/Version-2.4.7-brightgreen.svg)](https://github.com/xxlemon-io/astrbot_plugin_fishing/releases/tag/v2.4.7)
+[![Version](https://img.shields.io/badge/Version-2.4.8-brightgreen.svg)](https://github.com/xxlemon-io/astrbot_plugin_fishing/releases/tag/v2.4.8)
 [![Major Update](https://img.shields.io/badge/Major-Update-red.svg)](https://github.com/xxlemon-io/astrbot_plugin_fishing/releases/tag/v2.0.0)
 
 ## ✨ 功能特点
@@ -107,6 +115,14 @@
 如果您有功能建议或发现问题，欢迎在 [Issues](https://github.com/xxlemon-io/astrbot_plugin_fishing/issues) 中提出！
  
 ## 📦 更新记录
+
+#### v2.4.8 (本地定制：鱼饵重量/价值修正 + 商店排序与WebUI同步)
+
+- **功能调整**：统一“提高价值”和“提高重量”的实现方式，在最终决定渔获重量时使用同一个修正乘数，并同步修正本次渔获基础价值。
+- **Bug修复**：修复 `价值连城饵` 的价值加成被错误接到出鱼权重上，导致实际渔获价值不提升的问题。
+- **Bug修复**：修复 `巨物诱饵` 误用数量乘数，导致效果偏离“巨物”描述的问题；现在为重量/基础价值 +20%。
+- **兼容性**：继续使用原有 `value_modifier` 和 `bonus_coin_modifier` 字段，不新增数据库列，保持两个实例共享数据库兼容。
+- **体验优化**：WebUI 鱼饵/饰品管理页、背包显示文案改为“重量/价值”，减少效果理解歧义。
 
 #### v2.4.7 (插件元数据规范化 + 命令文本优化 + 高稀有度鱼竿出售价格修复)
 
@@ -203,12 +219,13 @@
 | `/升级水族箱` | `/水族箱升级` | 升级水族箱容量 |
 | `/鱼竿` | - | 查看我的鱼竿 |
 | `/鱼饵` | - | 查看我的鱼饵 |
+| `/出售鱼饵 [编号] [数量]` | - | 出售指定数量鱼饵，售价为默认价格的20% |
 | `/饰品` | - | 查看我的饰品 |
 | `/道具` | `/我的道具`、`/查看道具` | 查看我的道具 |
 | `/使用 [短码]` | `/装备 [短码]` | 使用指定短码的物品（R=鱼竿，A=饰品，D=道具，B=鱼饵） |
 | `/开启全部钱袋` | `/打开全部钱袋`、`/打开所有钱袋` | 一次性开启所有钱袋类道具 |
 | `/精炼 [短码]` | `/强化 [短码]` | 精炼指定短码的鱼竿或饰品（无参数时显示帮助） |
-| `/出售 [短码]` | `/卖出 [短码]` | 出售指定短码的物品（R=鱼竿，A=饰品，D=道具） |
+| `/出售 [短码]` | `/卖出 [短码]` | 出售指定短码的物品（R=鱼竿，A=饰品，D=道具，B=鱼饵） |
 | `/锁定 [短码]` | `/上锁 [短码]` | 锁定指定短码的鱼竿或饰品，防止误操作 |
 | `/解锁 [短码]` | `/开锁 [短码]` | 解锁指定短码的鱼竿或饰品，允许正常操作 |
 | `/金币` | - | 查看金币余额 |
@@ -237,7 +254,7 @@
 ### 💰 出售定价与配置（鱼竿/饰品）
 
 - 系统回收价计算：`售价 = 基础价(按稀有度) × 精炼等级乘数`
-- 适用范围：`/出售 [短码]`、`/出售所有鱼竿`、`/出售所有饰品`
+- 适用范围：`/出售 [短码]`、`/出售鱼饵 [编号] [数量]`、`/出售所有鱼竿`、`/出售所有饰品`
 - 批量出售会跳过正在装备的物品
 
 配置示例（位于插件运行时装配的 `game_config` 中）：

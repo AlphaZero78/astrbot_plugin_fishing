@@ -10,8 +10,12 @@ from ..initial_data import (
     ACCESSORY_DATA,
     TITLE_DATA,
     GACHA_POOL,
+    GACHA_POOL_ITEM_DATA,
     ITEM_DATA,
     SHOP_DATA,
+    SHOP_ITEM_DATA,
+    SHOP_ITEM_COST_DATA,
+    SHOP_ITEM_REWARD_DATA,
 )
 from ..domain.models import Item
 from astrbot.api import logger
@@ -75,7 +79,13 @@ class DataSetupService:
                 "effect_description": bait[3],
                 "duration_minutes": bait[4],
                 "cost": bait[5],
-                "required_rod_rarity": bait[6]
+                "required_rod_rarity": bait[6],
+                "success_rate_modifier": bait[7],
+                "rare_chance_modifier": bait[8],
+                "garbage_reduction_modifier": bait[9],
+                "value_modifier": bait[10],
+                "quantity_modifier": bait[11],
+                "is_consumable": bait[12],
             })
 
         # 填充鱼竿数据
@@ -126,6 +136,8 @@ class DataSetupService:
                     "description": pool[2],
                     "cost_coins": pool[3],
                     "cost_premium_currency": pool[4],
+                    "is_limited_time": pool[5],
+                    "open_until": pool[6],
                 }
             )
 
@@ -133,34 +145,26 @@ class DataSetupService:
         self.create_initial_items()
 
         # --- 填充抽卡池具体物品 ---
-        # 检查是否已填充，避免重复
-        if not self.gacha_repo.get_pool_items(1):
-            self.gacha_repo.add_pool_item(1, {"item_type": "rod", "item_id": 4, "quantity": 1, "weight": 10}) # 星辰钓者
-            self.gacha_repo.add_pool_item(1, {"item_type": "rod", "item_id": 5, "quantity": 1, "weight": 3}) # 海神之赐
-            self.gacha_repo.add_pool_item(1, {"item_type": "rod", "item_id": 3, "quantity": 1, "weight": 30}) # 碳素纤维竿
-            self.gacha_repo.add_pool_item(1, {"item_type": "coins", "item_id": 0, "quantity": 10000, "weight": 57})
-
-        if not self.gacha_repo.get_pool_items(2):
-            self.gacha_repo.add_pool_item(2, {"item_type": "accessory", "item_id": 4, "quantity": 1, "weight": 5}) # 海洋之心
-            self.gacha_repo.add_pool_item(2, {"item_type": "accessory", "item_id": 3, "quantity": 1, "weight": 15}) # 丰收号角
-            self.gacha_repo.add_pool_item(2, {"item_type": "coins", "item_id": 0, "quantity": 20000, "weight": 80})
+        self._ensure_gacha_pool_items_from_initial_data()
 
         # --- 填充初始商店 ---
         if not self.shop_repo.get_all_shops():
             logger.info("正在初始化商店...")
             for shop_data in SHOP_DATA:
                 self.shop_repo.create_shop({
+                    "shop_id": shop_data[0],
                     "name": shop_data[1],
                     "description": shop_data[2],
                     "shop_type": shop_data[3],
                     "is_active": shop_data[4],
                     "start_time": shop_data[5],
                     "end_time": shop_data[6],
-                    "sort_order": shop_data[7],
+                    "daily_start_time": shop_data[7],
+                    "daily_end_time": shop_data[8],
+                    "sort_order": shop_data[9],
                 })
             
-            # 使用统一的方法填充商店1商品
-            self._ensure_shop1_default_items()
+            self._ensure_shop_items_from_initial_data()
             logger.info("初始商店与商品填充完成。")
 
         logger.info("核心游戏数据初始化完成。")
@@ -177,25 +181,119 @@ class DataSetupService:
         
         # --- 填充初始商店 ---
         all_shops = self.shop_repo.get_all_shops()
-        existing_shop_names = {s['name'] for s in all_shops}
+        existing_shops_by_id = {s["shop_id"]: s for s in all_shops}
+        existing_shop_names = {s["name"] for s in all_shops}
         
         for shop_data in SHOP_DATA:
-            if shop_data[1] not in existing_shop_names:
+            shop_payload = {
+                "name": shop_data[1],
+                "description": shop_data[2],
+                "shop_type": shop_data[3],
+                "is_active": shop_data[4],
+                "start_time": shop_data[5],
+                "end_time": shop_data[6],
+                "daily_start_time": shop_data[7],
+                "daily_end_time": shop_data[8],
+                "sort_order": shop_data[9],
+            }
+            if shop_data[0] in existing_shops_by_id:
+                self.shop_repo.update_shop(shop_data[0], shop_payload)
+            elif shop_data[1] not in existing_shop_names:
                 self.shop_repo.create_shop({
-                    "name": shop_data[1],
-                    "description": shop_data[2],
-                    "shop_type": shop_data[3],
-                    "is_active": shop_data[4],
-                    "start_time": shop_data[5],
-                    "end_time": shop_data[6],
-                    "sort_order": shop_data[7],
+                    "shop_id": shop_data[0],
+                    **shop_payload,
                 })
                 logger.info(f"创建新商店: {shop_data[1]}")
 
-        # --- 为海鸥港杂货铺添加初始商品 ---
-        self._ensure_shop1_default_items()
+        self._ensure_shop_items_from_initial_data()
 
         logger.info("商店数据同步完成。")
+
+    def _ensure_gacha_pool_items_from_initial_data(self):
+        """根据 initial_data.py 中的显式配置填充卡池物品。"""
+        grouped_items = {}
+        for pool_id, item_type, item_id, quantity, weight in GACHA_POOL_ITEM_DATA:
+            grouped_items.setdefault(pool_id, []).append({
+                "item_type": item_type,
+                "item_id": item_id,
+                "quantity": quantity,
+                "weight": weight,
+            })
+
+        for pool_id, items in grouped_items.items():
+            if self.gacha_repo.get_pool_items(pool_id):
+                continue
+            for item_data in items:
+                self.gacha_repo.add_pool_item(pool_id, item_data)
+
+    def _ensure_shop_items_from_initial_data(self):
+        """根据 initial_data.py 中的显式配置填充商店商品、成本与奖励。"""
+        if not SHOP_ITEM_DATA:
+            self._ensure_shop1_default_items()
+            return
+
+        for item_data in SHOP_ITEM_DATA:
+            (
+                item_id,
+                shop_id,
+                name,
+                description,
+                category,
+                stock_total,
+                per_user_limit,
+                per_user_daily_limit,
+                is_active,
+                start_time,
+                end_time,
+                sort_order,
+            ) = item_data
+
+            item_payload = {
+                "item_id": item_id,
+                "name": name,
+                "description": description,
+                "category": category,
+                "stock_total": stock_total,
+                "per_user_limit": per_user_limit,
+                "per_user_daily_limit": per_user_daily_limit,
+                "is_active": is_active,
+                "start_time": start_time,
+                "end_time": end_time,
+                "sort_order": sort_order,
+            }
+            if self.shop_repo.get_shop_item_by_id(item_id):
+                self.shop_repo.update_shop_item(item_id, item_payload)
+            else:
+                self.shop_repo.create_shop_item(shop_id, {
+                    **item_payload,
+                    "stock_sold": 0,
+                })
+
+        initial_item_ids = {item_data[0] for item_data in SHOP_ITEM_DATA}
+        for item_id in initial_item_ids:
+            for cost in self.shop_repo.get_item_costs(item_id):
+                self.shop_repo.delete_item_cost(cost["cost_id"])
+            for reward in self.shop_repo.get_item_rewards(item_id):
+                self.shop_repo.delete_item_reward(reward["reward_id"])
+
+        for item_id, cost_type, cost_amount, cost_item_id, cost_relation, group_id, quality_level in SHOP_ITEM_COST_DATA:
+            self.shop_repo.add_item_cost(item_id, {
+                "cost_type": cost_type,
+                "cost_amount": cost_amount,
+                "cost_item_id": cost_item_id,
+                "cost_relation": cost_relation,
+                "group_id": group_id,
+                "quality_level": quality_level,
+            })
+
+        for item_id, reward_type, reward_item_id, reward_quantity, reward_refine_level, quality_level in SHOP_ITEM_REWARD_DATA:
+            self.shop_repo.add_item_reward(item_id, {
+                "reward_type": reward_type,
+                "reward_item_id": reward_item_id,
+                "reward_quantity": reward_quantity,
+                "reward_refine_level": reward_refine_level,
+                "quality_level": quality_level,
+            })
 
     def _ensure_shop1_default_items(self):
         """确保商店1有默认商品（新设计：直接创建shop_items）"""
@@ -311,24 +409,30 @@ class DataSetupService:
     def create_initial_items(self):
         """创建初始的道具"""
         existing_items = self.item_template_repo.get_all()
-        existing_item_names = {item.name for item in existing_items}
+        existing_items_by_name = {item.name: item for item in existing_items}
 
         items_to_create = []
         for item_data in ITEM_DATA:
-            if item_data[1] not in existing_item_names:
+            item_template = Item(
+                item_id=0,
+                name=item_data[1],
+                description=item_data[2],
+                rarity=item_data[3],
+                effect_description=item_data[4],
+                cost=item_data[5],
+                is_consumable=item_data[6],
+                icon_url=item_data[7],
+                effect_type=item_data[8],
+                effect_payload=item_data[9],
+            )
+
+            existing = existing_items_by_name.get(item_template.name)
+            if existing:
+                item_template.item_id = existing.item_id
+                self.item_template_repo.update(item_template)
+            else:
                 items_to_create.append(
-                    Item(
-                        item_id=0,  # ID is auto-incrementing
-                        name=item_data[1],
-                        description=item_data[2],
-                        rarity=item_data[3],
-                        effect_description=item_data[4],
-                        cost=item_data[5],
-                        is_consumable=item_data[6],
-                        icon_url=item_data[7],
-                        effect_type=item_data[8],
-                        effect_payload=item_data[9],
-                    )
+                    item_template
                 )
 
         if items_to_create:

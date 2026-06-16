@@ -354,7 +354,7 @@ class SqliteItemTemplateRepository(AbstractItemTemplateRepository):
                 "garbage_reduction_modifier": data.get("garbage_reduction_modifier", 0.0),
                 "value_modifier": data.get("value_modifier", 1.0),
                 "quantity_modifier": data.get("quantity_modifier", 1.0),
-                "is_consumable": 1 if "is_consumable" in data else 0
+                "is_consumable": 1 if data.get("is_consumable") in (True, "1", 1, "on") else 0
             }
             cursor.execute("""
                 INSERT INTO baits (
@@ -387,7 +387,7 @@ class SqliteItemTemplateRepository(AbstractItemTemplateRepository):
                 "garbage_reduction_modifier": data.get("garbage_reduction_modifier", 0.0),
                 "value_modifier": data.get("value_modifier", 1.0),
                 "quantity_modifier": data.get("quantity_modifier", 1.0),
-                "is_consumable": 1 if "is_consumable" in data else 0
+                "is_consumable": 1 if data.get("is_consumable") in (True, "1", 1, "on") else 0
             }
             cursor.execute("""
                 UPDATE baits SET

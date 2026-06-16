@@ -1732,6 +1732,48 @@ class InventoryService:
             "remaining": owned_qty - quantity
         }
 
+    def sell_bait(self, user_id: str, bait_id: int, quantity: int = 1) -> Dict[str, Any]:
+        """出售指定数量的鱼饵，按照鱼饵默认价格的 20% 计价。"""
+        if quantity <= 0:
+            return {"success": False, "message": "数量必须大于0"}
+
+        user = self.user_repo.get_by_id(user_id)
+        if not user:
+            return {"success": False, "message": "用户不存在"}
+
+        bait_template = self.item_template_repo.get_bait_by_id(bait_id)
+        if not bait_template:
+            return {"success": False, "message": "鱼饵信息不存在"}
+
+        bait_inventory = self.inventory_repo.get_user_bait_inventory(user_id)
+        owned_qty = bait_inventory.get(bait_id, 0)
+        if owned_qty <= 0:
+            return {"success": False, "message": "❌ 你没有这个鱼饵"}
+        if quantity > owned_qty:
+            return {"success": False, "message": f"❌ 数量不足，当前仅有 {owned_qty} 个"}
+
+        base_cost = bait_template.cost or 0
+        single_price = int(base_cost * 0.2)
+        if base_cost > 0 and single_price <= 0:
+            single_price = 1
+        total = single_price * quantity
+
+        self.inventory_repo.update_bait_quantity(user_id, bait_id, -quantity)
+        if user.current_bait_id == bait_id and owned_qty - quantity <= 0:
+            user.current_bait_id = None
+            user.bait_start_time = None
+
+        user.coins += total
+        self.user_repo.update(user)
+
+        return {
+            "success": True,
+            "message": f"💰 成功卖出鱼饵【{bait_template.name}】x{quantity}，获得 {total} 金币",
+            "gained": total,
+            "remaining": owned_qty - quantity,
+            "unit_price": single_price,
+        }
+
     def lock_rod(self, user_id: str, rod_instance_id: int) -> Dict[str, Any]:
         """
         锁定指定的鱼竿，防止被当作精炼材料、卖出、上架

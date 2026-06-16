@@ -1,8 +1,26 @@
 {
+  "storage": {
+    "description": "数据存储配置",
+    "type": "object",
+    "items": {
+      "shared_db_path": {
+        "description": "共享数据库路径",
+        "type": "string",
+        "hint": "留空时使用本实例默认 data/fish.db；填写绝对路径可让多个 AstrBot 实例共用同一份钓鱼数据。",
+        "default": ""
+      }
+    }
+  },
   "webui": {
     "description": "Web管理界面配置",
     "type": "object",
     "items": {
+      "enabled": {
+        "description": "是否默认启动Web管理界面",
+        "type": "bool",
+        "hint": "开启后插件加载时会自动启动Web管理后台；多实例同时运行时请为不同实例配置不同端口",
+        "default": true
+      },
       "secret_key": {
         "description": "webui的密钥",
         "type": "string",

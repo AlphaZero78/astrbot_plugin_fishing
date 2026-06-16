@@ -345,45 +345,15 @@ async def deduct_coins(plugin: "FishingPlugin", event: AstrMessageEvent):
 
 
 async def start_admin(plugin: "FishingPlugin", event: AstrMessageEvent):
-    if plugin.web_admin_task and not plugin.web_admin_task.done():
-        yield event.plain_result("❌ 钓鱼后台管理已经在运行中")
-        return
     yield event.plain_result("🔄 正在启动钓鱼插件Web管理后台...")
 
-    if not await _is_port_available(plugin.port):
-        yield event.plain_result(f"❌ 端口 {plugin.port} 已被占用，请更换端口后重试")
-        return
-
-    try:
-        services_to_inject = {
-            "item_template_service": plugin.item_template_service,
-            "user_service": plugin.user_service,
-            "market_service": plugin.market_service,
-            "fishing_zone_service": plugin.fishing_zone_service,
-            "shop_service": plugin.shop_service,
-            "exchange_service": plugin.exchange_service,
-        }
-        app = create_app(secret_key=plugin.secret_key, services=services_to_inject)
-        config = Config()
-        config.bind = [f"0.0.0.0:{plugin.port}"]
-        plugin.web_admin_task = asyncio.create_task(serve(app, config))
-
-        # 等待服务启动
-        for i in range(10):
-            if await plugin._check_port_active():
-                break
-            await asyncio.sleep(1)
-        else:
-            raise TimeoutError("⌛ 启动超时，请检查防火墙设置")
-
-        await asyncio.sleep(1)  # 等待服务启动
-
+    result = await plugin._start_web_admin_server()
+    if result.get("success"):
         yield event.plain_result(
-            f"✅ 钓鱼后台已启动！\n🔗请访问 http://localhost:{plugin.port}/admin\n🔑 密钥请到配置文件中查看\n\n⚠️ 重要提示：\n• 如需公网访问，请自行配置端口转发和防火墙规则\n• 确保端口 {plugin.port} 已开放并映射到公网IP\n• 建议使用反向代理（如Nginx）增强安全性"
+            f"✅ {result.get('message')}\n\n⚠️ 重要提示：\n• 如需公网访问，请自行配置端口转发和防火墙规则\n• 确保端口 {plugin.port} 已开放并映射到公网IP\n• 建议使用反向代理（如Nginx）增强安全性"
         )
-    except Exception as e:
-        logger.error(f"启动后台失败: {e}", exc_info=True)
-        yield event.plain_result(f"❌ 启动后台失败: {e}")
+    else:
+        yield event.plain_result(f"❌ {result.get('message', '启动后台失败')}")
 
 
 async def stop_admin(plugin: "FishingPlugin", event: AstrMessageEvent):
