@@ -134,19 +134,23 @@ BAIT_DATA = [('面包团', '用面包捏成的简单鱼饵。', 1, '略微提高
 
 ROD_DATA = [
     # Format: (name, description, rarity, source, purchase_cost, quality_mod, quantity_mod, rare_mod, durability, icon_url)
-    ("新手木竿", "刚入门时的可靠伙伴", 1, "shop", 50, 1.0, 1.0, 0.0, None, None),
-    ("竹制鱼竿", "轻巧耐用", 2, "shop", 500, 1.0, 1.0, 0.01, None, None),
+    ("新手木竿", "刚入门时的可靠伙伴", 1, "shop", 50, 1.0, 1.0, 0.0, 100, None),
+    ("竹制鱼竿", "轻巧耐用", 2, "shop", 500, 1.02, 1.0, 0.01, 100, None),
     ("碳素纤维竿", "现代工艺的结晶", 3, "shop", 5000, 1.05, 1.0, 0.03, 1000, None),
-    ("星辰钓者", "蕴含星光力量的神秘鱼竿", 4, "gacha", None, 1.1, 1.0, 0.08, None, None),
-    ("海神之赐", "传说中海神波塞冬使用过的鱼竿", 5, "gacha", None, 1.2, 1.1, 0.15, None, None),
+    ("星辰钓者", "蕴含星光力量的神秘鱼竿", 4, "gacha", None, 1.10, 1.03, 0.07, None, None),
+    ("海神之赐", "传说中海神波塞冬使用过的鱼竿", 5, "gacha", None, 1.18, 1.08, 0.12, None, None),
+    ("源矿钓竿", "以源矿核心驱动的高阶钓竿，能稳定放大多项渔获收益。", 6, "gacha", 1000000, 1.25, 1.15, 0.15, None, None),
 ]
 
 ACCESSORY_DATA = [
-    # Format: (name, description, rarity, slot_type, quality_mod, quantity_mod, rare_mod, coin_mod, other_desc, icon_url)
-    ("幸运四叶草", "带来好运的小饰品", 2, "general", 1.05, 1.0, 0.01, 1.02, None, None),
-    ("渔夫的戒指", "刻有古老符文的戒指", 3, "general", 1.0, 1.0, 0.0, 1.10, None, None),
-    ("丰收号角", "象征丰收的魔法号角", 4, "general", 1.10, 1.05, 0.03, 1.15, None, None),
-    ("海洋之心", "传说中的宝石，能与海洋生物沟通", 5, "general", 1.20, 1.10, 0.05, 1.25, "大幅减少钓鱼等待时间", None),
+    # Format: (name, description, rarity, slot_type, quality_mod, quantity_mod, rare_mod, value_weight_mod, cooldown_mod, other_desc, icon_url)
+    ("幸运四叶草", "带来好运的小饰品", 2, "general", 1.03, 1.0, 0.005, 1.02, 1.0, None, None),
+    ("渔夫的戒指", "刻有古老符文的戒指", 3, "general", 1.04, 1.0, 0.01, 1.08, 1.0, None, None),
+    ("丰收号角", "象征丰收的魔法号角", 4, "general", 1.08, 1.03, 0.025, 1.12, 1.0, None, None),
+    ("海洋之心", "传说中的宝石，能与海洋生物沟通", 5, "general", 1.12, 1.06, 0.04, 1.18, 0.75, "减少钓鱼等待时间25%", None),
+    ("探鱼器", "扫描水域回波，帮助渔夫发现更高品质的目标。", 6, "general", 1.30, 1.05, 0.04, 1.05, 0.75, "扫描更高品质的鱼，减少钓鱼等待时间25%", None),
+    ("诱鱼器", "释放稳定诱鱼波段，吸引更稀有的鱼靠近。", 6, "general", 1.08, 1.02, 0.14, 1.05, 0.75, "吸引更稀有的鱼，减少钓鱼等待时间25%", None),
+    ("电鱼器", "以可控电脉冲扰动鱼群，提高一次钓获的丰富度。", 6, "general", 1.08, 1.30, 0.04, 1.05, 0.75, "电击更丰富的鱼，减少钓鱼等待时间25%", None),
 ]
 
 TITLE_DATA = [

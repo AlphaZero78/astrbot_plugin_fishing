@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', function () {
         form.querySelector('[name="bonus_fish_quantity_modifier"]').value = '1.0';
         form.querySelector('[name="bonus_rare_fish_chance"]').value = '0.0';
         form.querySelector('[name="bonus_coin_modifier"]').value = '1.0';
+        form.querySelector('[name="fishing_cooldown_modifier"]').value = '1.0';
     });
 
     document.querySelectorAll('.edit-btn').forEach(button => {

@@ -43,6 +43,7 @@ def up(cursor: sqlite3.Cursor):
             rarity INTEGER NOT NULL DEFAULT 1, slot_type TEXT DEFAULT 'general' NOT NULL,
             bonus_fish_quality_modifier REAL DEFAULT 1.0, bonus_fish_quantity_modifier REAL DEFAULT 1.0,
             bonus_rare_fish_chance REAL DEFAULT 0.0, bonus_coin_modifier REAL DEFAULT 1.0,
+            fishing_cooldown_modifier REAL DEFAULT 1.0,
             other_bonus_description TEXT, icon_url TEXT
         )
     """)

@@ -202,6 +202,7 @@ class InventoryService:
                     "bonus_fish_quantity_modifier": calculate_after_refine(accessory_template.bonus_fish_quantity_modifier, refine_level=accessory_instance.refine_level, rarity=accessory_template.rarity),
                     "bonus_rare_fish_chance": calculate_after_refine(accessory_template.bonus_rare_fish_chance, refine_level=accessory_instance.refine_level, rarity=accessory_template.rarity),
                     "bonus_coin_modifier": calculate_after_refine(accessory_template.bonus_coin_modifier, refine_level=accessory_instance.refine_level, rarity=accessory_template.rarity),
+                    "fishing_cooldown_modifier": getattr(accessory_template, "fishing_cooldown_modifier", 1.0),
                     "refine_level": accessory_instance.refine_level,
                 })
 

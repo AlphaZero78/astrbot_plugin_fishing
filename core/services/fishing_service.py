@@ -71,6 +71,14 @@ class FishingService:
         if default_target:
             self._notification_target = default_target
 
+    @staticmethod
+    def _clamp_probability(value: Any, default: float = 0.0) -> float:
+        try:
+            numeric_value = float(value)
+        except (TypeError, ValueError):
+            numeric_value = default
+        return min(max(numeric_value, 0.0), 1.0)
+
     def toggle_auto_fishing(self, user_id: str) -> Dict[str, Any]:
         """
         切换用户的自动钓鱼状态。
@@ -247,6 +255,9 @@ class FishingService:
                 base_success_rate += bait_template.success_rate_modifier
                 garbage_reduction_modifier = bait_template.garbage_reduction_modifier
                 catch_value_weight_modifier *= bait_template.value_modifier
+        base_success_rate = self._clamp_probability(base_success_rate, 0.7)
+        rare_bonus_cap = self._clamp_probability(self.config.get("rare_bonus_max_chance", 0.30), 0.30)
+        rare_chance = min(self._clamp_probability(rare_chance), rare_bonus_cap)
         logger.debug(f"使用鱼饵加成后： base_success_rate={base_success_rate}, quality_modifier={quality_modifier}, quantity_modifier={quantity_modifier}, catch_value_weight_modifier={catch_value_weight_modifier}, rare_chance={rare_chance}, coins_chance={coins_chance}")
         # 3. 判断是否成功钓到
         if random.random() >= base_success_rate:
@@ -328,7 +339,7 @@ class FishingService:
             log_value = math.log2(quality_modifier)
             
             # 从配置获取高品质鱼最大触发概率，默认35%
-            max_quality_chance = self.config.get("quality_bonus_max_chance", 0.35)
+            max_quality_chance = self._clamp_probability(self.config.get("quality_bonus_max_chance", 0.35), 0.35)
             
             # 缩放到配置的上限，让 quality_modifier=4.0 时达到上限
             # 缩放系数 = max_chance / 2（因为 log2(4) = 2）
@@ -1096,14 +1107,7 @@ class FishingService:
                         user.last_fishing_time = get_now() - timedelta(seconds=cooldown)
                         self.user_repo.update(user)
                         last_ts = user.last_fishing_time.timestamp()
-                    # 检查用户是否装备了海洋之心
-                    _cooldown = cooldown
-                    equipped_accessory = self.inventory_repo.get_user_equipped_accessory(user_id)
-                    if equipped_accessory:
-                        accessory_template = self.item_template_repo.get_accessory_by_id(equipped_accessory.accessory_id)
-                        if accessory_template and accessory_template.name == "海洋之心":
-                            # 海洋之心装备时，CD时间减半
-                            _cooldown /= 2
+                    _cooldown = cooldown * self._get_accessory_cooldown_modifier(user_id)
                     if now_ts - last_ts < _cooldown:
                         continue # CD中，跳过
 
@@ -1156,3 +1160,13 @@ class FishingService:
                 import traceback
                 logger.error(traceback.format_exc())
                 time.sleep(60)
+
+    def _get_accessory_cooldown_modifier(self, user_id: str) -> float:
+        """Return equipped accessory cooldown multiplier. 1.0 means no change."""
+        equipped_accessory = self.inventory_repo.get_user_equipped_accessory(user_id)
+        if not equipped_accessory:
+            return 1.0
+        accessory_template = self.item_template_repo.get_accessory_by_id(equipped_accessory.accessory_id)
+        if not accessory_template:
+            return 1.0
+        return max(getattr(accessory_template, "fishing_cooldown_modifier", 1.0) or 1.0, 0.0)

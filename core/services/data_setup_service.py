@@ -114,8 +114,9 @@ class DataSetupService:
                 "bonus_fish_quantity_modifier": acc[5],
                 "bonus_rare_fish_chance": acc[6],
                 "bonus_coin_modifier": acc[7],
-                "other_bonus_description": acc[8],
-                "icon_url": acc[9]
+                "fishing_cooldown_modifier": acc[8],
+                "other_bonus_description": acc[9],
+                "icon_url": acc[10]
             })
 
 

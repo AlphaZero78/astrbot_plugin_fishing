@@ -233,6 +233,8 @@ async def _draw_backpack_image_impl(user_data: Dict[str, Any], data_dir: str) ->
             attr_lines += 1
         if acc.get('bonus_coin_modifier', 1.0) not in (1.0, 1) and acc.get('bonus_coin_modifier', 0) > 0:
             attr_lines += 1
+        if acc.get('fishing_cooldown_modifier', 1.0) not in (1.0, 1) and acc.get('fishing_cooldown_modifier', 0) > 0:
+            attr_lines += 1
         desc_lines = 0
         if acc.get('description'):
             lines = wrap_text_by_width(f"{acc['description']}", tiny_font, card_width - 30)
@@ -619,6 +621,11 @@ async def _draw_backpack_image_impl(user_data: Dict[str, Any], data_dir: str) ->
             if accessory.get('bonus_coin_modifier', 1.0) != 1.0 and accessory.get('bonus_coin_modifier', 1) != 1 and accessory.get('bonus_coin_modifier', 1) > 0:
                 bonus_text = f"重量/价值加成: {to_percentage(accessory['bonus_coin_modifier'])}"
                 draw.text((x + 15, bonus_y), bonus_text, font=tiny_font, fill=gold_color)
+                bonus_y += 18
+            if accessory.get('fishing_cooldown_modifier', 1.0) != 1.0 and accessory.get('fishing_cooldown_modifier', 1) != 1 and accessory.get('fishing_cooldown_modifier', 1) > 0:
+                cooldown_change = (1 - accessory['fishing_cooldown_modifier']) * 100
+                bonus_text = f"钓鱼时间: -{cooldown_change:.0f}%"
+                draw.text((x + 15, bonus_y), bonus_text, font=tiny_font, fill=primary_light)
                 bonus_y += 18
             
             # 描述 - 支持换行且不超出卡片

@@ -21,10 +21,11 @@ def _normalize_now_for(lst_time):
 
 
 def _compute_cooldown_seconds(base_seconds, equipped_accessory):
-    """根据是否装备海洋之心动态计算冷却时间。"""
-    if equipped_accessory and equipped_accessory.get("name") == "海洋之心":
-        return base_seconds / 2
-    return base_seconds
+    """根据装备饰品的冷却倍率动态计算冷却时间。"""
+    if not equipped_accessory:
+        return base_seconds
+    modifier = equipped_accessory.get("fishing_cooldown_modifier", 1.0) or 1.0
+    return base_seconds * max(modifier, 0.0)
 
 
 def _build_fish_message(result, fishing_cost):

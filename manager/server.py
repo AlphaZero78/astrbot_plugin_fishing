@@ -463,6 +463,7 @@ async def accessories_csv_template():
         "bonus_fish_quantity_modifier",
         "bonus_rare_fish_chance",
         "bonus_coin_modifier",
+        "fishing_cooldown_modifier",
         "other_bonus_description",
         "icon_url",
     ]
@@ -475,6 +476,7 @@ async def accessories_csv_template():
         "1.0",
         "0.02",
         "1.10",
+        "1.0",
         "额外描述",
         "",
     ]
@@ -534,6 +536,7 @@ async def import_accessories_csv():
                     "bonus_fish_quantity_modifier": float(row.get("bonus_fish_quantity_modifier") or 1.0),
                     "bonus_rare_fish_chance": float(row.get("bonus_rare_fish_chance") or 0.0),
                     "bonus_coin_modifier": float(row.get("bonus_coin_modifier") or 1.0),
+                    "fishing_cooldown_modifier": float(row.get("fishing_cooldown_modifier") or 1.0),
                     "other_bonus_description": (row.get("other_bonus_description") or "").strip() or None,
                     "icon_url": (row.get("icon_url") or "").strip() or None,
                 }

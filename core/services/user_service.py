@@ -232,7 +232,8 @@ class UserService:
             "accessory": {
                 "id": current_accessory.accessory_id,
                 "name": accessory_template.name,
-                "description": accessory_template.description
+                "description": accessory_template.description,
+                "fishing_cooldown_modifier": getattr(accessory_template, "fishing_cooldown_modifier", 1.0)
             }
         }
 

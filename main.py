@@ -138,6 +138,7 @@ class FishingPlugin(Star):
                 "cooldown_seconds": fishing_config.get("cooldown_seconds", 180)
             },
             "quality_bonus_max_chance": fishing_config.get("quality_bonus_max_chance", 0.35),
+            "rare_bonus_max_chance": fishing_config.get("rare_bonus_max_chance", 0.30),
             "steal": {
                 "cooldown_seconds": steal_config.get("cooldown_seconds", 14400)
             },

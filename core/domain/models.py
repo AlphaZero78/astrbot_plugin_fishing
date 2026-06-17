@@ -66,6 +66,7 @@ class Accessory:
     bonus_fish_quantity_modifier: float = 1.0
     bonus_rare_fish_chance: float = 0.0
     bonus_coin_modifier: float = 1.0 # 渔获重量与价值加成，保留旧字段名以兼容数据库
+    fishing_cooldown_modifier: float = 1.0 # 钓鱼冷却倍率，0.75 表示等待时间减少 25%
     other_bonus_description: Optional[str] = None
     icon_url: Optional[str] = None
 
