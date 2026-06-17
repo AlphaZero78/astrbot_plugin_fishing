@@ -1,6 +1,8 @@
 import json
 import math
+import os
 import random
+import sqlite3
 import threading
 import time
 from typing import Dict, Any, Optional
@@ -47,6 +49,10 @@ class FishingService:
         # 自动钓鱼线程相关属性
         self.auto_fishing_thread: Optional[threading.Thread] = None
         self.auto_fishing_running = False
+        self.auto_fishing_owner_id = f"{os.getpid()}-{id(self)}"
+        self.auto_fishing_lock_name = "auto_fishing_loop"
+        self.auto_fishing_lock_ttl_seconds = 120
+        self.runtime_lock_db_path = getattr(user_repo, "db_path", None)
         # 税收线程相关属性
         self.tax_thread: Optional[threading.Thread] = None
         self.tax_running = False
@@ -994,6 +1000,79 @@ class FishingService:
         if self.auto_fishing_thread:
             self.auto_fishing_thread.join(timeout=1.0)
             logger.info("自动钓鱼线程已停止")
+        self._release_runtime_lock(self.auto_fishing_lock_name)
+
+    def _ensure_runtime_locks_table(self, cursor) -> None:
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS runtime_locks (
+                lock_name TEXT PRIMARY KEY,
+                owner_id TEXT NOT NULL,
+                expires_at REAL NOT NULL,
+                updated_at REAL NOT NULL
+            )
+            """
+        )
+
+    def _acquire_runtime_lock(self, lock_name: str, ttl_seconds: int) -> bool:
+        """Acquire or renew a shared SQLite lease for multi-process background tasks."""
+        if not self.runtime_lock_db_path:
+            return True
+
+        now = time.time()
+        expires_at = now + ttl_seconds
+        try:
+            with sqlite3.connect(self.runtime_lock_db_path, timeout=5) as conn:
+                cursor = conn.cursor()
+                cursor.execute("BEGIN IMMEDIATE")
+                self._ensure_runtime_locks_table(cursor)
+                row = cursor.execute(
+                    "SELECT owner_id, expires_at FROM runtime_locks WHERE lock_name = ?",
+                    (lock_name,),
+                ).fetchone()
+
+                if row is None:
+                    cursor.execute(
+                        """
+                        INSERT INTO runtime_locks (lock_name, owner_id, expires_at, updated_at)
+                        VALUES (?, ?, ?, ?)
+                        """,
+                        (lock_name, self.auto_fishing_owner_id, expires_at, now),
+                    )
+                    conn.commit()
+                    return True
+
+                owner_id, current_expires_at = row
+                if owner_id == self.auto_fishing_owner_id or float(current_expires_at) <= now:
+                    cursor.execute(
+                        """
+                        UPDATE runtime_locks
+                        SET owner_id = ?, expires_at = ?, updated_at = ?
+                        WHERE lock_name = ?
+                        """,
+                        (self.auto_fishing_owner_id, expires_at, now, lock_name),
+                    )
+                    conn.commit()
+                    return True
+
+                conn.rollback()
+                return False
+        except Exception as e:
+            logger.warning(f"自动钓鱼运行锁获取失败，将跳过本轮: {e}")
+            return False
+
+    def _release_runtime_lock(self, lock_name: str) -> None:
+        if not self.runtime_lock_db_path:
+            return
+
+        try:
+            with sqlite3.connect(self.runtime_lock_db_path, timeout=5) as conn:
+                conn.execute(
+                    "DELETE FROM runtime_locks WHERE lock_name = ? AND owner_id = ?",
+                    (lock_name, self.auto_fishing_owner_id),
+                )
+        except Exception as e:
+            logger.debug(f"自动钓鱼运行锁释放失败: {e}")
 
     def start_daily_tax_task(self):
         """启动每日税收的独立后台线程。"""
@@ -1077,6 +1156,13 @@ class FishingService:
 
         while self.auto_fishing_running:
             try:
+                if not self._acquire_runtime_lock(
+                    self.auto_fishing_lock_name,
+                    self.auto_fishing_lock_ttl_seconds,
+                ):
+                    time.sleep(40)
+                    continue
+
                 # 检查并执行每日重置（如果需要）
                 if self._reset_rare_fish_daily_quota():
                     # 如果执行了重置，说明是新的一天，执行其他每日任务
@@ -1117,10 +1203,8 @@ class FishingService:
                         continue
                     fishing_cost = zone.fishing_cost
                     if not user.can_afford(fishing_cost):
-                        # 金币不足，关闭其自动钓鱼
-                        user.auto_fishing_enabled = False
-                        self.user_repo.update(user)
-                        logger.warning(f"用户 {user_id} 金币不足（需要 {fishing_cost} 金币），已关闭自动钓鱼")
+                        # 金币不足时跳过本轮，保留自动钓鱼开关；后续补足金币会自动恢复。
+                        logger.warning(f"用户 {user_id} 金币不足（需要 {fishing_cost} 金币），跳过本轮自动钓鱼")
                         continue
 
                     # 执行钓鱼
