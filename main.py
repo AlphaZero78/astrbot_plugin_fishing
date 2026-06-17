@@ -673,9 +673,9 @@ class FishingPlugin(Star):
         async for r in inventory_handlers.bait(self, event):
             yield r
 
-    @filter.command("出售鱼饵")
+    @filter.command("出售鱼饵", alias={"卖出鱼饵"})
     async def sell_bait(self, event: AstrMessageEvent):
-        """出售指定数量的鱼饵。用法：出售鱼饵 编号 数量"""
+        """出售指定数量的鱼饵。用法：出售鱼饵 编号 数量|all"""
         async for r in inventory_handlers.sell_bait(self, event):
             yield r
 

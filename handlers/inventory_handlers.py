@@ -59,7 +59,7 @@ async def user_backpack(plugin: "FishingPlugin", event: AstrMessageEvent):
                     "🧹 建议及时清理背包：\n"
                     "• /出售所有鱼竿 - 快速清理鱼竿\n"
                     "• /出售所有饰品 - 快速清理饰品\n"
-                    "• /出售鱼饵 [编号] [数量] - 出售多余鱼饵\n"
+                    "• /出售鱼饵 [编号] [数量|all] - 出售多余鱼饵\n"
                     "• /出售 [ID] - 出售指定装备/道具/鱼饵\n\n"
                     "📝 使用分类命令查看完整列表：\n"
                     "• /鱼竿 - 查看所有鱼竿（自动过滤）\n"
@@ -302,21 +302,21 @@ async def bait(plugin: "FishingPlugin", event: AstrMessageEvent):
             if bait["effect_description"]:
                 message += f"   - 效果: {bait['effect_description']}\n"
             message += "\n"
-        message += "💡 出售多余鱼饵：/出售鱼饵 [编号] [数量]，售价为默认价格的20%\n"
+        message += "💡 出售多余鱼饵：/出售鱼饵 [编号] [数量|all]，售价为默认价格的20%\n"
         yield event.plain_result(message)
     else:
         yield event.plain_result("🐟 您还没有鱼饵，快去商店购买或抽奖获得吧！")
 
 
 async def sell_bait(plugin: "FishingPlugin", event: AstrMessageEvent):
-    """出售鱼饵。用法：/出售鱼饵 [编号] [数量]"""
+    """出售鱼饵。用法：/出售鱼饵 [编号] [数量|all]"""
     user_id = plugin._get_effective_user_id(event)
     args = event.message_str.split()
     if len(args) < 3:
         yield event.plain_result(
             "❌ 请指定要出售的鱼饵编号和数量。\n"
-            "用法：/出售鱼饵 [编号] [数量]\n"
-            "示例：/出售鱼饵 B3 10 或 /出售鱼饵 3 十"
+            "用法：/出售鱼饵 [编号] [数量|all]\n"
+            "示例：/出售鱼饵 B3 10、/出售鱼饵 3 十 或 /出售鱼饵 B3 all"
         )
         return
 
@@ -330,13 +330,18 @@ async def sell_bait(plugin: "FishingPlugin", event: AstrMessageEvent):
 
     try:
         bait_id = int(token)
-        quantity = parse_amount(args[2])
+        quantity_token = args[2].strip().lower()
+        if quantity_token in ("all", "全部", "所有"):
+            bait_inventory = plugin.inventory_repo.get_user_bait_inventory(user_id)
+            quantity = bait_inventory.get(bait_id, 0)
+        else:
+            quantity = parse_amount(args[2])
     except Exception as e:
-        yield event.plain_result(f"❌ 无法解析鱼饵编号或数量：{str(e)}。示例：/出售鱼饵 B3 10")
+        yield event.plain_result(f"❌ 无法解析鱼饵编号或数量：{str(e)}。示例：/出售鱼饵 B3 10 或 /出售鱼饵 B3 all")
         return
 
     if quantity <= 0:
-        yield event.plain_result("❌ 数量必须是正整数。")
+        yield event.plain_result("❌ 数量必须是正整数，或使用 all 卖出该种鱼饵的全部库存。")
         return
 
     result = plugin.inventory_service.sell_bait(user_id, bait_id, quantity)
@@ -822,12 +827,17 @@ async def sell_equipment(plugin: "FishingPlugin", event: AstrMessageEvent, equip
         quantity = 1
         if len(args) >= 3:
             try:
-                quantity = parse_amount(args[2])
+                quantity_token = args[2].strip().lower()
+                if target_type == "bait" and quantity_token in ("all", "全部", "所有"):
+                    bait_inventory = plugin.inventory_repo.get_user_bait_inventory(user_id)
+                    quantity = bait_inventory.get(template_id, 0)
+                else:
+                    quantity = parse_amount(args[2])
                 if quantity <= 0:
-                    yield event.plain_result("❌ 数量必须是正整数")
+                    yield event.plain_result("❌ 数量必须是正整数；出售鱼饵时也可以使用 all 卖出全部库存")
                     return
             except Exception as e:
-                yield event.plain_result(f"❌ 无法解析数量：{str(e)}。示例：1 或 五 或 一千")
+                yield event.plain_result(f"❌ 无法解析数量：{str(e)}。示例：1、五、一千；出售鱼饵可用 all")
                 return
 
         if target_type == "item":
